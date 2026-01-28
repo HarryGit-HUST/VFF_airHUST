@@ -8,10 +8,9 @@ target_y : 0.0
 target_yaw : 0.0
 UAV_radius : 0.4
 time_final : 40.0
-ALPHA : 2.3
+
 MAX_SPEED : 1.0
-OBS_EPS : 0.1
-KV : -0.15
-KN : -0.05
-W_goal : 1.0
-W_free : 0.0
+safe_margin : 0.6
+repulsive_gain : 2.0
+MIN_SAFE_DISTANCE : 0.2
+MAX_REPULSIVE_FORCE : 10.0

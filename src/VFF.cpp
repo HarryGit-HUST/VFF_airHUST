@@ -7,13 +7,20 @@ float err_max = 0.2;
 const float HOVER_DURATION = 10.0f; // 降落悬停时间（秒）
 float hold_flag = false;
 
-// 【可配置参数】
+// 【可配置参数】（全部从yaml读取）
 float target_x = 5.0f;     // 目标点x（相对起飞点，米）
 float target_y = 0.0f;     // 目标点y（相对起飞点，米）
 float target_z = ALTITUDE; // 目标点z高度（米）
 float target_yaw = 0.0f;   // 目标偏航角（弧度）
 float UAV_radius = 0.3f;   // 无人机等效半径（米）
 float time_final = 70.0f;  // 超时时间（秒）
+
+// VFF算法参数（全部从yaml读取，函数内直接使用）
+float safe_margin = 0.5f;          // 安全裕度（米）
+float repulsive_gain = 2.0f;       // 排斥力增益系数
+float MAX_SPEED = 1.0f;            // 最大前进速度（米/秒）
+float MIN_SAFE_DISTANCE = 0.2f;    // 力场计算最小距离（防除零）
+float MAX_REPULSIVE_FORCE = 10.0f; // 排斥力上限（防数值爆炸）
 
 void print_param()
 {
@@ -25,6 +32,15 @@ void print_param()
     cout << "自动offboard" << std::endl;
   else
     cout << "遥控器offboard" << std::endl;
+
+  // 打印VFF参数
+  std::cout << "=== VFF参数 ===" << std::endl;
+  std::cout << "UAV_radius: " << UAV_radius << std::endl;
+  std::cout << "safe_margin: " << safe_margin << std::endl;
+  std::cout << "repulsive_gain: " << repulsive_gain << std::endl;
+  std::cout << "MAX_SPEED: " << MAX_SPEED << std::endl;
+  std::cout << "MIN_SAFE_DISTANCE: " << MIN_SAFE_DISTANCE << std::endl;
+  std::cout << "MAX_REPULSIVE_FORCE: " << MAX_REPULSIVE_FORCE << std::endl;
 }
 
 int main(int argc, char **argv)
@@ -52,8 +68,7 @@ int main(int argc, char **argv)
   // 设置话题发布频率，需要大于2Hz，飞控连接有500ms的心跳包
   ros::Rate rate(20);
 
-  // 参数读取
-
+  // 参数读取（全部映射到全局变量）
   nh.param<float>("err_max", err_max, 0);
   nh.param<float>("if_debug", if_debug, 0);
   nh.param<float>("target_x", target_x, 5.0f);
@@ -62,13 +77,12 @@ int main(int argc, char **argv)
   nh.param<float>("UAV_radius", UAV_radius, 0.3f);
   nh.param<float>("time_final", time_final, 70.0f);
 
-  // nh.param<float>("ALPHA", ALPHA, 2.0f);
+  // VFF参数读取
+  nh.param<float>("safe_margin", safe_margin, 0.5f);
+  nh.param<float>("repulsive_gain", repulsive_gain, 2.0f);
   nh.param<float>("MAX_SPEED", MAX_SPEED, 1.0f);
-  // nh.param<float>("OBS_EPS", OBS_EPS, 0.1f);
-  // nh.param<float>("KV", KV, 0.2f);
-  // nh.param<float>("KN", KN, 0.05f);
-  // nh.param<float>("W_goal", W_goal, 0.8f);
-  // nh.param<float>("W_free", W_free, 0.2f);
+  nh.param<float>("MIN_SAFE_DISTANCE", MIN_SAFE_DISTANCE, 0.2f);
+  nh.param<float>("MAX_REPULSIVE_FORCE", MAX_REPULSIVE_FORCE, 10.0f);
 
   print_param();
 
@@ -182,23 +196,28 @@ int main(int argc, char **argv)
       break;
     }
 
-    // 世界系前进
+    // 世界系前进（VFF避障巡航）
     case 2:
     {
-      // setpoint_raw.position.x = 1.f;
-      // break;
-      // 调用圆锥避障函数（每帧执行）
-      bool is_finish = cone_avoidance_movement(target_x, target_y, target_z,
-                                               target_yaw, UAV_radius,
-                                               time_final, err_max);
-      if (is_finish)
+      // ========== VFF避障调用（参数已从yaml读取，直接使用全局变量） ==========
+      bool reached = vff_avoidance(target_x, target_y, target_yaw);
+
+      // ========== 任务完成判断 ==========
+      ros::Duration elapsed = ros::Time::now() - last_request;
+      if (reached || elapsed.toSec() > time_final)
       {
-        printf("圆锥避障任务完成，准备降落！\n");
-        mission_num = 3; // 完成避障，切换到降落任务
-        break;
+        if (reached)
+        {
+          ROS_WARN("[VFF-GRID] 成功抵达目标点(%.2f, %.2f)!", target_x, target_y);
+        }
+        else
+        {
+          ROS_WARN("[VFF-GRID] 超时保护触发(%.1fs)，强制结束避障", elapsed.toSec());
+        }
+        mission_num = 3; // 切换到降落任务
+        last_request = ros::Time::now();
       }
-      // 修复15：仅在避障函数内发布速度指令，避免重复发布
-      mavros_setpoint_pos_pub.publish(setpoint_raw);
+      // 注意：vff_avoidance() 已直接修改 setpoint_raw，此处无需额外设置
       break;
     }
 

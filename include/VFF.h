@@ -434,13 +434,13 @@ bool vff_avoidance(
                 max_certainty_ahead = certainty_grid[i][j];
 
     float speed_factor = 1.0f - (max_certainty_ahead / 100.0f) * 0.7f;
-    if (speed_factor < 0.3f)
-        speed_factor = 0.3f;
+    if (speed_factor < 0.5f)
+        speed_factor = 0.5f;
 
     // ✅ 使用传入的max_speed
     float forward_speed = max_speed * speed_factor;
 //此处的force事实上只起到方向的控制作用，而forward_speed才是速度的大小
-    float TIME_STEP = 0.1f;
+    float TIME_STEP = 0.3f;
     float safe_x = drone_x + total_force.x * forward_speed * TIME_STEP;
     float safe_y = drone_y + total_force.y * forward_speed * TIME_STEP;
 

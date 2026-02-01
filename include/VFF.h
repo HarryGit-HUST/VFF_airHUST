@@ -259,6 +259,28 @@ bool vff_avoidance(
     float min_safe_distance,   // 显式传入
     float max_repulsive_force) // 显式传入
 {
+    // ========== 调试：参数智能打印（受if_debug控制，防20Hz刷屏） ==========
+    {
+        // 静态变量：控制打印频率（每秒1次）
+        static ros::Time last_print_time = ros::Time::now();
+        ros::Duration elapsed = ros::Time::now() - last_print_time;
+
+        // 仅当if_debug>=1 且 距离上次打印>1秒时输出
+        if (if_debug >= 1 && elapsed.toSec() > 1.0)
+        {
+            ROS_INFO("[VFF-DEBUG] ===== VFF参数传入 =====");
+            ROS_INFO("[VFF-DEBUG] 目标点: (%.2f, %.2f) m, 航向: %.1f°",
+                     target_x_rel, target_y_rel, target_yaw * 180.0f / M_PI);
+            ROS_INFO("[VFF-DEBUG] UAV半径: %.2fm, 安全裕度: %.2fm",
+                     uav_radius, safe_margin);
+            ROS_INFO("[VFF-DEBUG] 排斥增益: %.2f, 最大速度: %.2fm/s",
+                     repulsive_gain, max_speed);
+            ROS_INFO("[VFF-DEBUG] 最小安全距: %.2fm, 排斥力上限: %.2f",
+                     min_safe_distance, max_repulsive_force);
+            ROS_INFO("[VFF-DEBUG] =========================");
+            last_print_time = ros::Time::now();
+        }
+    }
     // ========== 1. 栅格系统（函数静态变量，符合规范） ==========
     static constexpr int GRID_SIZE = 50;
     static constexpr float GRID_RESOLUTION = 0.1f;

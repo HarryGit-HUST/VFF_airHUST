@@ -10,7 +10,7 @@ UAV_radius : 0.3
 time_final : 70.0
 
 MAX_SPEED : 3.0
-safe_margin : 0.1
+safe_margin : 0.01
 repulsive_gain : 2.0
-MIN_SAFE_DISTANCE : 0.1
+MIN_SAFE_DISTANCE : 0.01
 MAX_REPULSIVE_FORCE : 8.0

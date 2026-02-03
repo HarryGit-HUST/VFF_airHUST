@@ -335,7 +335,8 @@ bool vff_avoidance(
                 continue;
 
             // ✅ 使用传入参数计算安全半径（解决编译错误根源）
-            float safe_radius_world = obs.radius + uav_radius + safe_margin;
+            //float safe_radius_world = obs.radius + uav_radius + safe_margin;
+            float safe_radius_world = obs.radius ;
             float obs_radius_grid = safe_radius_world / GRID_RESOLUTION;
             int radius_int = static_cast<int>(std::ceil(obs_radius_grid));
 

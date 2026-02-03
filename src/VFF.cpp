@@ -21,6 +21,10 @@ float repulsive_gain = 2.0f;       // 排斥力增益系数
 float MAX_SPEED = 1.0f;            // 最大前进速度（米/秒）
 float MIN_SAFE_DISTANCE = 0.2f;    // 力场计算最小距离（防除零）
 float MAX_REPULSIVE_FORCE = 10.0f; // 排斥力上限（防数值爆炸）
+// ========== 新增：优化VFF专用参数 ==========
+float DYNAMIC_SAFE_MARGIN_BASE = 0.4f; // 基础安全裕度（米）
+float FORCE_BALANCE_THRESHOLD = 0.1f;  // 力场平衡阈值
+float RANDOM_PERTURBATION_DEG = 15.0f; // 随机扰动角度（度）
 
 void print_param()
 {
@@ -83,6 +87,9 @@ int main(int argc, char **argv)
   nh.param<float>("MAX_SPEED", MAX_SPEED, 1.0f);
   nh.param<float>("MIN_SAFE_DISTANCE", MIN_SAFE_DISTANCE, 0.2f);
   nh.param<float>("MAX_REPULSIVE_FORCE", MAX_REPULSIVE_FORCE, 10.0f);
+  nh.param<float>("DYNAMIC_SAFE_MARGIN_BASE", DYNAMIC_SAFE_MARGIN_BASE, 0.4f);
+  nh.param<float>("FORCE_BALANCE_THRESHOLD", FORCE_BALANCE_THRESHOLD, 0.1f);
+  nh.param<float>("RANDOM_PERTURBATION_DEG", RANDOM_PERTURBATION_DEG, 15.0f);
 
   print_param();
 
@@ -200,15 +207,17 @@ int main(int argc, char **argv)
     case 2:
     {
       bool reached = vff_avoidance(
-          target_x,           // 目标X（相对）
-          target_y,           // 目标Y（相对）
-          target_yaw,         // 目标航向
-          UAV_radius,         // 无人机半径（来自yaml）
-          safe_margin,        // 安全裕度（来自yaml）
-          repulsive_gain,     // 排斥力增益（来自yaml）
-          MAX_SPEED,          // 最大速度（来自yaml）
-          MIN_SAFE_DISTANCE,  // 最小安全距离（来自yaml）
-          MAX_REPULSIVE_FORCE // 排斥力上限（来自yaml）
+          target_x,                    // 目标X（相对）
+          target_y,                    // 目标Y（相对）
+          target_yaw,                  // 目标航向
+          UAV_radius,                  // 无人机半径（来自yaml）
+          DYNAMIC_SAFE_MARGIN_BASE,    // 替代safe_margin
+          repulsive_gain,              // 排斥力增益（来自yaml）
+          MAX_SPEED,                   // 最大速度（来自yaml）
+          MIN_SAFE_DISTANCE,           // 最小安全距离（来自yaml）
+          MAX_REPULSIVE_FORCE    ,      // 排斥力上限（来自yaml）
+              FORCE_BALANCE_THRESHOLD, // 新增
+          RANDOM_PERTURBATION_DEG      // 新增
       );
 
       ros::Duration elapsed = ros::Time::now() - last_request;
